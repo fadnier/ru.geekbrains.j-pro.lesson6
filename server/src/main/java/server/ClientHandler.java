@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.logging.*;
 
 public class ClientHandler {
     private Server server;
@@ -14,6 +14,7 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
     private ExecutorService service;
+    private static final Logger logger = Logger.getLogger(ClientHandler.class.getName());
 
     private String nick;
     private String login;
@@ -24,6 +25,7 @@ public class ClientHandler {
         this.socket = socket;
         this.service = service;
         try {
+            logger.addHandler(server.getFileHandler());
             in = new DataInputStream(socket.getInputStream());
             out = new DataOutputStream(socket.getOutputStream());
 
@@ -35,7 +37,7 @@ public class ClientHandler {
                     //цикл аутентификации
                     while (true) {
                         String str = in.readUTF();
-
+                        logger.fine(str);
                         if (str.startsWith("/reg ")) {
                             String[] token = str.split(" ");
 
@@ -74,7 +76,7 @@ public class ClientHandler {
                                     nick = newNick;
                                     id = Integer.parseInt(authParam[2]);
                                     server.subscribe(this);
-                                    System.out.println("Клиент: " + nick + " подключился"+ socket.getRemoteSocketAddress());
+                                    logger.info("Клиент: " + nick + " подключился"+ socket.getRemoteSocketAddress());
                                     socket.setSoTimeout(0);
                                     break;
                                 } else {
@@ -89,7 +91,7 @@ public class ClientHandler {
                     //цикл работы
                     while (true) {
                         String str = in.readUTF();
-
+                        logger.fine(str);
                         if (str.startsWith("/")) {
                             if (str.equals("/end")) {
                                 sendMsg("/end");
@@ -127,13 +129,15 @@ public class ClientHandler {
                 }
                 ///////
                 catch (IOException e) {
+                    logger.warning(e.getMessage());
                     e.printStackTrace();
                 } finally {
                     server.unsubscribe(this);
-                    System.out.println("Клиент отключился");
+                    logger.info("Клиент отключился");
                     try {
                         socket.close();
                     } catch (IOException e) {
+                        logger.warning(e.getMessage());
                         e.printStackTrace();
                     }
                 }
@@ -147,8 +151,10 @@ public class ClientHandler {
 
     public void sendMsg(String msg) {
         try {
+            logger.fine(id+" "+msg);
             out.writeUTF(msg);
         } catch (IOException e) {
+            logger.warning(e.getMessage());
             e.printStackTrace();
         }
     }
