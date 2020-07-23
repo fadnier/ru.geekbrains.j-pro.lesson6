@@ -5,12 +5,11 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.*;
 
 
 public class Server {
@@ -18,6 +17,8 @@ public class Server {
     private AuthService authService;
     private MessageService messageService;
     private ExecutorService service;
+    private static final Logger logger = Logger.getLogger(Server.class.getName());
+    private static Handler fileHandler;
 
     public Server() {
         clients = new Vector<>();
@@ -26,20 +27,26 @@ public class Server {
         ServerSocket server = null;
         Socket socket;
 
+
         final int PORT = 8189;
 
         try {
+            fileHandler = new FileHandler("server-log_%g.log",10*1024,5,true);
+            fileHandler.setFormatter(new SimpleFormatter());
+            fileHandler.setLevel(Level.INFO);
+            logger.addHandler(fileHandler);
             server = new ServerSocket(PORT);
-            System.out.println("Сервер запущен!");
+            logger.info("Старт сервера");
             SqliteService.connect();
             while (true) {
                 socket = server.accept();
-                System.out.println("Клиент подключился ");
+                logger.info("Клиент подключился ");
                 service = Executors.newFixedThreadPool(4);
                 new ClientHandler(this, socket, service);
             }
 
         } catch (IOException | ClassNotFoundException | SQLException e) {
+            logger.warning(e.getMessage());
             e.printStackTrace();
         } finally {
             try {
@@ -119,5 +126,9 @@ public class Server {
         for (ClientHandler c : clients) {
             c.sendMsg(msg);
         }
+    }
+
+    public Handler getFileHandler() {
+        return fileHandler;
     }
 }
